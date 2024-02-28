@@ -17,7 +17,6 @@ import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.analysis.en.PorterStemFilter;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -250,22 +249,21 @@ public class MainController {
             //get index from database
             List<Index> allIndexes = indexRepository.getIndexByBook(book);
 
-            logger.info("processing book: " + book.getTitle());
+            logger.trace("processing book: " + book.getTitle());
             List<String> tokens = new ArrayList<>();
             try {
-                logger.info("stemming book: " + book.getTitle());
+                logger.trace("stemming book: " + book.getTitle());
                 tokens = stem(book.getContent());
-                logger.info("stemmed book: " + book.getTitle());
-                logger.info("tokens: " + tokens.size());
+                logger.trace("stemmed book: " + book.getTitle());
+                logger.trace("tokens: " + tokens.size());
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            logger.info("processing words");
+            logger.trace("processing words");
             for (String s : tokens) {
                 Index index = new Index(book, s, 1);
 
-                Boolean exists = allIndexes.contains(index);
-
+                boolean exists = allIndexes.contains(index);
                 if (exists) {
                     Index i = allIndexes.get(allIndexes.indexOf(index));
                     i.setFrequency(i.getFrequency() + 1);
@@ -273,10 +271,10 @@ public class MainController {
                     allIndexes.add(index);
                 }
             }
-            logger.info("processed words");
-            logger.info("saving indexes");
+            logger.trace("processed words");
+            logger.trace("saving indexes");
             indexRepository.saveAll(allIndexes.stream().toList());
-            logger.info("saved indexes");
+            logger.trace("saved indexes");
         }
 
         return "ok";
