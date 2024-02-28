@@ -1,5 +1,6 @@
 package com.fadgiras.searchengine.service;
 
+import com.fadgiras.searchengine.controller.MainController;
 import com.fadgiras.searchengine.dto.BookCardDTO;
 import com.fadgiras.searchengine.model.Book;
 import com.fadgiras.searchengine.model.JaccardBook;
@@ -9,9 +10,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class JaccardService {
@@ -28,34 +32,28 @@ public class JaccardService {
         jaccardBookRepository.deleteAll(); // Supprime toutes les distances de Jaccard de la base de données
         List<Book> books = bookRepository.findAll(); // Récupère tous les livres de la base de données
 
-        record BookAndWords(Book book, Set<String> words) {}
         // Map pour stocker les ensembles de mots pour chaque livre
-        List<BookAndWords> allBookAndWords = books.stream()
-                .map(book -> new BookAndWords(book, getWords(book)))
-                .toList();
+        Map<Book, Set<String>> bookWords = books.stream()
+                .collect(Collectors.toMap(Function.identity(), this::getWords));
 
-        record BookCouple(BookAndWords bookAndWords, BookAndWords otherBookAndWords) {}
-        Set<BookCouple> bookCouples = allBookAndWords.stream().flatMap(bookAndWords ->
-                        allBookAndWords.stream()
-                                .filter(otherBookAndWords -> bookAndWords.book() != otherBookAndWords.book())
-                                .map(otherBookAndWords -> new BookCouple(bookAndWords, otherBookAndWords)))
+        record BookCouple(Book book, Book other) {}
+        Set<BookCouple> bookCouples = books.stream().flatMap(book ->
+                        books.stream()
+                                .filter(otherBook -> book != otherBook)
+                                .map(otherBook -> new BookCouple(book, otherBook)))
                 .collect(Collectors.toSet());
 
         // Calcul de la distance de Jaccard entre chaque paire de livres
         List<JaccardBook> jaccardBooks = bookCouples.parallelStream().map(bookCouple -> {
-            logger.trace("{} / {}",
-                    bookCouple.bookAndWords().book().getTitle(),
-                    bookCouple.otherBookAndWords().book().getTitle());
+            logger.trace("{} / {}", bookCouple.book().getTitle(), bookCouple.other().getTitle());
 
-            double jaccardIndex = calculateJaccardIndex(
-                    bookCouple.bookAndWords().words(),
-                    bookCouple.otherBookAndWords().words());
+            Set<String> words1 = bookWords.get(bookCouple.book());
+            Set<String> words2 = bookWords.get(bookCouple.other());
+
+            double jaccardIndex = calculateJaccardIndex(words1, words2);
             double jaccardDistance = 1 - jaccardIndex;
 
-            return new JaccardBook(
-                    bookCouple.bookAndWords().book(),
-                    bookCouple.otherBookAndWords().book(),
-                    jaccardDistance);
+            return new JaccardBook(bookCouple.book(), bookCouple.other(), jaccardDistance);
         }).toList();
 
         // Enregistrement des distances de Jaccard dans la base de données
