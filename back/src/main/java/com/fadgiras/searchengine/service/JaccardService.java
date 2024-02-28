@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,15 +30,11 @@ public class JaccardService {
     public String calculateJaccardDistances() {
         jaccardBookRepository.deleteAll(); // Supprime toutes les distances de Jaccard de la base de données
         List<Book> books = bookRepository.findAll(); // Récupère tous les livres de la base de données
-        Map<Book, Set<String>> bookWords = new HashMap<>(); // Map pour stocker les ensembles de mots pour chaque livre
         List<JaccardBook> jaccardBooks = new ArrayList<>();
 
-        // Extraction des mots uniques pour chaque livre
-        for (Book book : books) {
-            Set<String> words = Arrays.stream(book.getContent().toLowerCase().split("\\W+"))
-                    .collect(Collectors.toSet());
-            bookWords.put(book, words);
-        }
+        // Map pour stocker les ensembles de mots pour chaque livre
+        Map<Book, Set<String>> bookWords = books.stream()
+                .collect(Collectors.toMap(Function.identity(), this::getWords));
 
         // Calcul de la distance de Jaccard entre chaque paire de livres
         for (int i = 0; i < books.size(); i++) {
@@ -61,6 +58,10 @@ public class JaccardService {
          jaccardBookRepository.saveAll(jaccardBooks);
 
         return "OK";
+    }
+
+    private Set<String> getWords(Book book) {
+        return Arrays.stream(book.getContent().toLowerCase().split("\\W+")).collect(Collectors.toSet());
     }
 
     private double calculateJaccardIndex(Set<String> set1, Set<String> set2) {
