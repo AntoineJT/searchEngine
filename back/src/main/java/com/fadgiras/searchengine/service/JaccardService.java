@@ -1,10 +1,13 @@
 package com.fadgiras.searchengine.service;
 
+import com.fadgiras.searchengine.controller.MainController;
 import com.fadgiras.searchengine.dto.BookCardDTO;
 import com.fadgiras.searchengine.model.Book;
 import com.fadgiras.searchengine.model.JaccardBook;
 import com.fadgiras.searchengine.repository.BookRepository;
 import com.fadgiras.searchengine.repository.JaccardBookRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -21,6 +24,8 @@ public class JaccardService {
     @Autowired
     JaccardBookRepository jaccardBookRepository;
 
+    private static final Logger logger = LoggerFactory.getLogger(JaccardService.class);
+
     public String calculateJaccardDistances() {
         jaccardBookRepository.deleteAll(); // Supprime toutes les distances de Jaccard de la base de données
         List<Book> books = bookRepository.findAll(); // Récupère tous les livres de la base de données
@@ -36,9 +41,9 @@ public class JaccardService {
 
         // Calcul de la distance de Jaccard entre chaque paire de livres
         for (int i = 0; i < books.size(); i++) {
-            System.err.println(i + " / " + books.size());
+            logger.trace(i + " / " + books.size());
             for (int j = i+1; j < books.size(); j++) {
-                System.err.println(j + " / " + books.size());
+                logger.trace(j + " / " + books.size());
                 Book book1 = books.get(i);
                 Book book2 = books.get(j);
 
