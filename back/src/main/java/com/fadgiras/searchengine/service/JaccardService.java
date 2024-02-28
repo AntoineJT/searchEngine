@@ -28,6 +28,8 @@ public class JaccardService {
 
     private static final Logger logger = LoggerFactory.getLogger(JaccardService.class);
 
+    private record BookCouple(Book book, Book other) {}
+
     public String calculateJaccardDistances() {
         jaccardBookRepository.deleteAll(); // Supprime toutes les distances de Jaccard de la base de données
         List<Book> books = bookRepository.findAll(); // Récupère tous les livres de la base de données
@@ -36,7 +38,6 @@ public class JaccardService {
         Map<Book, Set<String>> bookWords = books.stream()
                 .collect(Collectors.toMap(Function.identity(), this::getWords));
 
-        record BookCouple(Book book, Book other) {}
         Set<BookCouple> bookCouples = books.stream().flatMap(book ->
                         books.stream()
                                 .filter(otherBook -> book != otherBook)
@@ -44,22 +45,26 @@ public class JaccardService {
                 .collect(Collectors.toSet());
 
         // Calcul de la distance de Jaccard entre chaque paire de livres
-        List<JaccardBook> jaccardBooks = bookCouples.parallelStream().map(bookCouple -> {
-            logger.trace("{} / {}", bookCouple.book().getTitle(), bookCouple.other().getTitle());
-
-            Set<String> words1 = bookWords.get(bookCouple.book());
-            Set<String> words2 = bookWords.get(bookCouple.other());
-
-            double jaccardIndex = calculateJaccardIndex(words1, words2);
-            double jaccardDistance = 1 - jaccardIndex;
-
-            return new JaccardBook(bookCouple.book(), bookCouple.other(), jaccardDistance);
-        }).toList();
+        List<JaccardBook> jaccardBooks = bookCouples.parallelStream()
+                .map(bookCouple -> computeJaccardBook(bookCouple, bookWords))
+                .toList();
 
         // Enregistrement des distances de Jaccard dans la base de données
-         jaccardBookRepository.saveAll(jaccardBooks);
+        jaccardBookRepository.saveAll(jaccardBooks);
 
         return "OK";
+    }
+
+    private JaccardBook computeJaccardBook(BookCouple bookCouple, Map<Book, Set<String>> bookWords) {
+        logger.trace("{} / {}", bookCouple.book().getTitle(), bookCouple.other().getTitle());
+
+        Set<String> words1 = bookWords.get(bookCouple.book());
+        Set<String> words2 = bookWords.get(bookCouple.other());
+
+        double jaccardIndex = calculateJaccardIndex(words1, words2);
+        double jaccardDistance = 1 - jaccardIndex;
+
+        return new JaccardBook(bookCouple.book(), bookCouple.other(), jaccardDistance);
     }
 
     private Set<String> getWords(Book book) {
