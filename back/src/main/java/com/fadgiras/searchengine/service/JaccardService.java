@@ -24,14 +24,14 @@ public class JaccardService {
     public String calculateJaccardDistances() {
         jaccardBookRepository.deleteAll(); // Supprime toutes les distances de Jaccard de la base de données
         List<Book> books = bookRepository.findAll(); // Récupère tous les livres de la base de données
-        Map<Long, Set<String>> bookWords = new HashMap<>(); // Map pour stocker les ensembles de mots pour chaque livre
+        Map<Book, Set<String>> bookWords = new HashMap<>(); // Map pour stocker les ensembles de mots pour chaque livre
         List<JaccardBook> jaccardBooks = new ArrayList<>();
 
         // Extraction des mots uniques pour chaque livre
         for (Book book : books) {
             Set<String> words = Arrays.stream(book.getContent().toLowerCase().split("\\W+"))
                     .collect(Collectors.toSet());
-            bookWords.put(book.getId(), words);
+            bookWords.put(book, words);
         }
 
         // Calcul de la distance de Jaccard entre chaque paire de livres
@@ -42,8 +42,8 @@ public class JaccardService {
                 Book book1 = books.get(i);
                 Book book2 = books.get(j);
 
-                Set<String> words1 = bookWords.get(book1.getId());
-                Set<String> words2 = bookWords.get(book2.getId());
+                Set<String> words1 = bookWords.get(book1);
+                Set<String> words2 = bookWords.get(book2);
 
                 double jaccardIndex = calculateJaccardIndex(words1, words2);
                 double jaccardDistance = 1 - jaccardIndex;
