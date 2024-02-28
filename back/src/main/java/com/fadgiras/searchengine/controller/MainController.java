@@ -31,7 +31,9 @@ import java.net.URLDecoder;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.function.Function;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.slf4j.Logger;
@@ -246,35 +248,28 @@ public class MainController {
         List<Book> books = bookRepository.findAll();
 
         for (Book book : books) {
-            //get index from database
-            List<Index> allIndexes = indexRepository.getIndexByBook(book);
-
             logger.trace("processing book: {}", book.getTitle());
-            List<String> tokens = new ArrayList<>();
             try {
                 logger.trace("stemming book: {}", book.getTitle());
-                tokens = stem(book.getContent());
+                List<String> tokens = stem(book.getContent());
                 logger.trace("tokens: {}", tokens.size());
+                logger.trace("processing words");
+
+                Map<String, Long> occurrenceByToken = tokens.stream()
+                        .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+
+                List<Index> allIndexes = occurrenceByToken.entrySet().stream().map(tokenOccurrence ->
+                        new Index(book, tokenOccurrence.getKey(), (int)(long)tokenOccurrence.getValue())
+                ).collect(Collectors.toList());
+
+                logger.trace("processed words");
+                logger.trace("saving indexes");
+                indexRepository.saveAll(allIndexes);
+                logger.trace("saved indexes");
+
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            logger.trace("processing words");
-
-            for (String s : tokens) {
-                Index index = new Index(book, s, 1);
-
-                boolean exists = allIndexes.contains(index);
-                if (exists) {
-                    Index i = allIndexes.get(allIndexes.indexOf(index));
-                    i.setFrequency(i.getFrequency() + 1);
-                } else {
-                    allIndexes.add(index);
-                }
-            }
-            logger.trace("processed words");
-            logger.trace("saving indexes");
-            indexRepository.saveAll(allIndexes);
-            logger.trace("saved indexes");
         }
 
         return "ok";
