@@ -255,10 +255,10 @@ public class MainController {
                 logger.trace("tokens: {}", tokens.size());
                 logger.trace("processing words");
 
-                Map<String, Long> occurrenceByToken = tokens.stream()
+                Map<String, Long> occurrenceByToken = tokens.parallelStream()
                         .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
 
-                List<Index> allIndexes = occurrenceByToken.entrySet().stream().map(tokenOccurrence ->
+                List<Index> allIndexes = occurrenceByToken.entrySet().parallelStream().map(tokenOccurrence ->
                         new Index(book, tokenOccurrence.getKey(), (int)(long)tokenOccurrence.getValue())
                 ).collect(Collectors.toList());
 
