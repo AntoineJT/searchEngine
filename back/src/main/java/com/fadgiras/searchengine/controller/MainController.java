@@ -249,13 +249,13 @@ public class MainController {
             //get index from database
             List<Index> allIndexes = indexRepository.getIndexByBook(book);
 
-            logger.trace("processing book: " + book.getTitle());
+            logger.trace("processing book: {}", book.getTitle());
             List<String> tokens = new ArrayList<>();
             try {
-                logger.trace("stemming book: " + book.getTitle());
+                logger.trace("stemming book: {}", book.getTitle());
                 tokens = stem(book.getContent());
-                logger.trace("stemmed book: " + book.getTitle());
-                logger.trace("tokens: " + tokens.size());
+                logger.trace("stemmed book: {}", book.getTitle());
+                logger.trace("tokens: {}", tokens.size());
             } catch (Exception e) {
                 e.printStackTrace();
             }
