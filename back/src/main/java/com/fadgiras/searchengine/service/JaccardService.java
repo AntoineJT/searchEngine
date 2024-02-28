@@ -35,7 +35,7 @@ public class JaccardService {
         List<Book> books = bookRepository.findAll(); // Récupère tous les livres de la base de données
 
         // Map pour stocker les ensembles de mots pour chaque livre
-        Map<Book, Set<String>> bookWords = books.stream()
+        Map<Book, Set<String>> bookWords = books.parallelStream()
                 .collect(Collectors.toMap(Function.identity(), this::getWords));
 
         Set<BookCouple> bookCouples = books.stream().flatMap(book ->
