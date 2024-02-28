@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class JaccardService {
@@ -61,7 +62,9 @@ public class JaccardService {
     }
 
     private Set<String> getWords(Book book) {
-        return Arrays.stream(book.getContent().toLowerCase().split("\\W+")).collect(Collectors.toSet());
+        return Arrays.stream(book.getContent().toLowerCase().split("\\W+"))
+                .parallel()
+                .collect(Collectors.toSet());
     }
 
     private double calculateJaccardIndex(Set<String> set1, Set<String> set2) {
