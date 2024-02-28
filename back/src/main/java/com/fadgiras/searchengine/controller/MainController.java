@@ -243,34 +243,31 @@ public class MainController {
 
     @RequestMapping(value = "/indexer", produces = "application/json")
     public String indexer() {
+        bookRepository.findAll()
+                .parallelStream()
+                .forEach(book -> {
+                    logger.trace("processing book: {}", book.getTitle());
+                    try {
+                        logger.trace("stemming book: {}", book.getTitle());
+                        List<String> tokens = stem(book.getContent());
+                        logger.trace("tokens: {}", tokens.size());
+                        logger.trace("processing words");
 
-        //get books from database
-        List<Book> books = bookRepository.findAll();
+                        Map<String, Long> occurrenceByToken = tokens.parallelStream()
+                                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
 
-        for (Book book : books) {
-            logger.trace("processing book: {}", book.getTitle());
-            try {
-                logger.trace("stemming book: {}", book.getTitle());
-                List<String> tokens = stem(book.getContent());
-                logger.trace("tokens: {}", tokens.size());
-                logger.trace("processing words");
+                        List<Index> allIndexes = occurrenceByToken.entrySet().parallelStream().map(tokenOccurrence ->
+                                new Index(book, tokenOccurrence.getKey(), (int)(long)tokenOccurrence.getValue())
+                        ).collect(Collectors.toList());
 
-                Map<String, Long> occurrenceByToken = tokens.parallelStream()
-                        .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
-
-                List<Index> allIndexes = occurrenceByToken.entrySet().parallelStream().map(tokenOccurrence ->
-                        new Index(book, tokenOccurrence.getKey(), (int)(long)tokenOccurrence.getValue())
-                ).collect(Collectors.toList());
-
-                logger.trace("processed words");
-                logger.trace("saving indexes");
-                indexRepository.saveAll(allIndexes);
-                logger.trace("saved indexes");
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-
+                        logger.trace("processed words");
+                        logger.trace("saving indexes");
+                        indexRepository.saveAll(allIndexes);
+                        logger.trace("saved indexes");
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                });
         return "ok";
     }
 
