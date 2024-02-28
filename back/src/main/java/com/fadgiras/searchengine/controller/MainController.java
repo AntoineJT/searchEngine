@@ -244,9 +244,9 @@ public class MainController {
     @RequestMapping(value = "/indexer", produces = "application/json")
     public String indexer() {
         indexRepository.deleteAll();
-        bookRepository.findAll()
+        List<Index> allIndexes = bookRepository.findAll()
                 .parallelStream()
-                .forEach(book -> {
+                .map(book -> {
                     logger.trace("processing book: {}", book.getTitle());
                     try {
                         logger.trace("stemming book: {}", book.getTitle());
@@ -257,18 +257,25 @@ public class MainController {
                         Map<String, Long> occurrenceByToken = tokens.parallelStream()
                                 .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
 
-                        List<Index> allIndexes = occurrenceByToken.entrySet().parallelStream().map(tokenOccurrence ->
+                        List<Index> bookIndexes = occurrenceByToken.entrySet().parallelStream().map(tokenOccurrence ->
                                 new Index(book, tokenOccurrence.getKey(), (int)(long)tokenOccurrence.getValue())
-                        ).collect(Collectors.toList());
+                        ).toList();
 
                         logger.trace("processed words");
-                        logger.trace("saving indexes");
-                        indexRepository.saveAll(allIndexes);
-                        logger.trace("saved indexes");
+
+                        return bookIndexes;
                     } catch (Exception e) {
                         e.printStackTrace();
+                        return null;
                     }
-                });
+                }).filter(Objects::nonNull)
+                .flatMap(Collection::stream)
+                .toList();
+
+        logger.trace("saving indexes");
+        indexRepository.saveAll(allIndexes);
+        logger.trace("saved indexes");
+
         return "ok";
     }
 
