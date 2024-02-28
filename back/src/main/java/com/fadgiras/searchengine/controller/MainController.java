@@ -243,9 +243,9 @@ public class MainController {
 
     @RequestMapping(value = "/indexer", produces = "application/json")
     public String indexer() {
-        List<Index> allIndexes = bookRepository.findAll()
+        bookRepository.findAll()
                 .parallelStream()
-                .map(book -> {
+                .forEach(book -> {
                     logger.trace("processing book: {}", book.getTitle());
                     try {
                         logger.trace("stemming book: {}", book.getTitle());
@@ -261,20 +261,13 @@ public class MainController {
                         ).toList();
 
                         logger.trace("processed words");
-
-                        return bookIndexes;
+                        logger.trace("saving indexes");
+                        indexRepository.saveAll(bookIndexes);
+                        logger.trace("saved indexes");
                     } catch (Exception e) {
                         e.printStackTrace();
-                        return null;
                     }
-                }).filter(Objects::nonNull)
-                .flatMap(Collection::stream)
-                .toList();
-
-        logger.trace("saving indexes");
-        indexRepository.saveAll(allIndexes);
-        logger.trace("saved indexes");
-
+                });
         return "ok";
     }
 
