@@ -31,29 +31,30 @@ public class JaccardService {
     public String calculateJaccardDistances() {
         jaccardBookRepository.deleteAll(); // Supprime toutes les distances de Jaccard de la base de données
         List<Book> books = bookRepository.findAll(); // Récupère tous les livres de la base de données
-        List<JaccardBook> jaccardBooks = new ArrayList<>();
 
         // Map pour stocker les ensembles de mots pour chaque livre
         Map<Book, Set<String>> bookWords = books.stream()
                 .collect(Collectors.toMap(Function.identity(), this::getWords));
 
+        record BookCouple(Book book, Book other) {}
+        Set<BookCouple> bookCouples = books.stream().flatMap(book ->
+                        books.stream()
+                                .filter(otherBook -> book != otherBook)
+                                .map(otherBook -> new BookCouple(book, otherBook)))
+                .collect(Collectors.toSet());
+
         // Calcul de la distance de Jaccard entre chaque paire de livres
-        for (int i = 0; i < books.size(); i++) {
-            logger.trace(i + " / " + books.size());
-            for (int j = i+1; j < books.size(); j++) {
-                logger.trace(j + " / " + books.size());
-                Book book1 = books.get(i);
-                Book book2 = books.get(j);
+        List<JaccardBook> jaccardBooks = bookCouples.parallelStream().map(bookCouple -> {
+            logger.trace("{} / {}", bookCouple.book().getTitle(), bookCouple.other().getTitle());
 
-                Set<String> words1 = bookWords.get(book1);
-                Set<String> words2 = bookWords.get(book2);
+            Set<String> words1 = bookWords.get(bookCouple.book());
+            Set<String> words2 = bookWords.get(bookCouple.other());
 
-                double jaccardIndex = calculateJaccardIndex(words1, words2);
-                double jaccardDistance = 1 - jaccardIndex;
+            double jaccardIndex = calculateJaccardIndex(words1, words2);
+            double jaccardDistance = 1 - jaccardIndex;
 
-                jaccardBooks.add(new JaccardBook(book1, book2, jaccardDistance));
-            }
-        }
+            return new JaccardBook(bookCouple.book(), bookCouple.other(), jaccardDistance);
+        }).toList();
 
         // Enregistrement des distances de Jaccard dans la base de données
          jaccardBookRepository.saveAll(jaccardBooks);
